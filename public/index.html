@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>División Vertical de Pantalla con Título y Botón</title>
+    <link rel="stylesheet" href="stylr.css" />
+  </head>
+  <body>
+    <div class="container" id="container">
+      <div class="top">
+        <h1>chat random</h1>
+      </div>
+      <div class="middle" id="outputDiv"></div>
+      <div class="bottom">
+        <button class="button" id="leave-room">buscar chat</button>
+        <input
+          type="text"
+          class="input"
+          placeholder="Escribe aquí..."
+          id="messageInput"
+        />
+        <button class="button" id="send-message">send</button>
+      </div>
+    </div>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script src="../script/index.js"></script>
+    <script>
+        
+      const connectionNumber = document.getElementById("connectionNumber");
+      const messageInput = document.getElementById("messageInput");
+      const outputDiv = document.getElementById("outputDiv");
+      const socket = io("http://127.0.0.1:5000/");
+
+
+
+      messages = [];
+
+
+      document.getElementById("send-message").addEventListener("click", () => {
+        const message = messageInput.value.trim();
+        if (message) {
+          const newMessage = "you:" + message;
+          messages.push(newMessage);
+          renderMessages();
+          socket.emit("send_message", { message: message });
+          messageInput.value = "";
+        } else {
+          log("Por favor, escribe un mensaje antes de enviarlo.");
+        }
+      });
+
+      socket.on("message", (message) => {
+        console.log(message);
+        const phrases = [
+          "se ha desconectado",
+          "No hay suficientes clientes en espera para crear una pareja.",
+          "Has sido unido a la sala:",
+          "Has salido de la sala.",
+          "Has sido emparejado con",
+          "No estás en una sala.",
+          "No tienes pareja para enviar un mensaje.",
+        ];
+
+        let found = false;
+
+        for (let phrase of phrases) {
+          if (message.startsWith(phrase)) {
+            messages.push("Notifications: " + message);
+            renderMessages();
+            console.log("La frase que coincide es:", phrase);
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) {
+          messages.push("stranger: " + message);
+          renderMessages();
+        }
+      });
+
+      function renderMessages() {
+        outputDiv.innerHTML = "";
+        messages.forEach((text) => {
+          const messageContainer = document.createElement("div");
+          messageContainer.classList.add("message");
+          const parts = text.split(":");
+          const sender = parts[0].trim();
+          if (sender === "you") {
+            messageContainer.classList.add("message-you");
+          } else if (sender === "Notifications") {
+            messageContainer.classList.add("message-noti");
+          } else {
+            messageContainer.classList.add("message-other");
+          }
+
+          const p = document.createElement("p");
+          p.textContent = text;
+          messageContainer.appendChild(p);
+
+          outputDiv.appendChild(messageContainer);
+        });
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+      }
+
+
+      document.getElementById("leave-room").addEventListener("click", () => {
+        socket.emit("leave_room");
+        clearMessages();
+        socket.emit("create_random_pair");
+      });
+
+      function clearMessages() {
+        messages = [];
+        renderMessages();
+      }
+    </script>
+  </body>
+</html>
